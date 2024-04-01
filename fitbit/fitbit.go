@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/stackus/dotenv"
@@ -172,7 +173,7 @@ func NewFitbitClient() *http.Client {
 	conf := &oauth2.Config{
 		ClientID:     os.Getenv("FITBIT_CLIENT_ID"),
 		ClientSecret: os.Getenv("FITBIT_API_KEY"),
-		Scopes:       []string{"activity", "profile", "sleep", "weight", "heartrate", "settings"},
+		Scopes:       []string{"activity", "profile", "sleep", "weight", "heartrate", "settings", "nutrition"},
 		RedirectURL:  "http://localhost:8080/fitbitCallback",
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  "https://www.fitbit.com/oauth2/authorize",
@@ -193,7 +194,7 @@ func NewFitbitClient() *http.Client {
 			log.Fatal(err)
 		}
 		token, err = conf.Exchange(ctx, code, oauth2.VerifierOption(verifier))
-
+		saveToken(token)
 	}
 
 	if !token.Valid() {
@@ -255,4 +256,22 @@ func GetStepsDay(fitbitClient *http.Client) *StepsData {
 		log.Fatal(err)
 	}
 	return &stepsData
+}
+
+func AddWater(fitbitClient *http.Client, ounces int) {
+	req, err := http.NewRequest(http.MethodPost, "https://api.fitbit.com/1/user/-/foods/log/water.json", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	q := req.URL.Query()
+	q.Add("date", "today")
+	q.Add("amount", strconv.Itoa(ounces))
+	q.Add("unit", "fl oz")
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := fitbitClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
 }
