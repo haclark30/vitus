@@ -14,6 +14,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const fitbitUrl = "https://api.fitbit.com"
+
 type Token struct {
 	AccessToken  string `json:"access_token"`
 	TokenType    string `json:"token_type"`
@@ -210,7 +212,9 @@ func NewFitbitClient() *http.Client {
 
 func GetActivitiesToday(fitbitClient *http.Client) *FitnessData {
 
-	resp, err := fitbitClient.Get("https://api.fitbit.com/1/user/-/activities/date/today.json")
+	resp, err := fitbitClient.Get(
+		fmt.Sprintf("%s/1/user/-/activities/date/today.json",
+			fitbitUrl))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -228,7 +232,9 @@ func GetActivitiesToday(fitbitClient *http.Client) *FitnessData {
 
 func GetHeartDay(fitbitClient *http.Client) *HeartRateData {
 
-	resp, err := fitbitClient.Get("https://api.fitbit.com/1/user/-/activities/heart/date/today/1d/1min.json")
+	resp, err := fitbitClient.Get(
+		fmt.Sprintf("%s/1/user/-/activities/heart/date/today/1d/1min.json",
+			fitbitUrl))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -244,7 +250,9 @@ func GetHeartDay(fitbitClient *http.Client) *HeartRateData {
 	return &heartrateData
 }
 func GetStepsDay(fitbitClient *http.Client) *StepsData {
-	resp, err := fitbitClient.Get("https://api.fitbit.com/1/user/-/activities/steps/date/today/1d/1min.json")
+	resp, err := fitbitClient.Get(
+		fmt.Sprintf("%s/1/user/-/activities/steps/date/today/1d/1min.json",
+			fitbitUrl))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -259,7 +267,10 @@ func GetStepsDay(fitbitClient *http.Client) *StepsData {
 }
 
 func AddWater(fitbitClient *http.Client, ounces int) {
-	req, err := http.NewRequest(http.MethodPost, "https://api.fitbit.com/1/user/-/foods/log/water.json", nil)
+	req, err := http.NewRequest(
+		http.MethodPost,
+		fmt.Sprintf("%s/1/user/-/foods/log/water.json", fitbitUrl),
+		nil)
 	if err != nil {
 		log.Fatal(err)
 	}

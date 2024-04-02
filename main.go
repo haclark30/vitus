@@ -40,26 +40,36 @@ func main() {
 
 	} else {
 		heartRate := fitbit.GetHeartDay(client)
-		data := make([]float64, 0)
-		for _, hr := range heartRate.ActivitiesHeartIntraday.Dataset {
-			data = append(data, float64(hr.Value))
+		stepsDay := fitbit.GetStepsDay(client)
+		heartData := make([]float64, 0)
+		stepsData := make([]float64, 0)
+		heartIndex := 0
+		for _, step := range stepsDay.ActivitiesStepsIntra.Dataset {
+			var heart fitbit.IntradayData
+			if heartIndex < len(heartRate.ActivitiesHeartIntraday.Dataset) {
+				heart = heartRate.ActivitiesHeartIntraday.Dataset[heartIndex]
+			}
+			if step.Time == heart.Time {
+				heartData = append(heartData, float64(heart.Value))
+				heartIndex++
+			} else {
+				heartData = append(heartData, 0)
+			}
+			stepsData = append(stepsData, float64(step.Value))
 		}
 		graph := asciigraph.Plot(
-			data,
+			heartData,
 			asciigraph.Height(10),
 			asciigraph.Width(100))
 		fmt.Println(graph)
 		fmt.Println()
 
-		stepsData := fitbit.GetStepsDay(client)
-		data = make([]float64, 0)
-		for _, steps := range stepsData.ActivitiesStepsIntra.Dataset {
-			data = append(data, float64(steps.Value))
-		}
 		graph = asciigraph.Plot(
-			data,
+			stepsData,
 			asciigraph.Height(10),
 			asciigraph.Width(100))
 		fmt.Println(graph)
+		fmt.Println(len(heartData), len(stepsData))
 	}
+
 }
