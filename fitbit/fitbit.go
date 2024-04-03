@@ -123,6 +123,19 @@ type StepsData struct {
 	ActivitiesSteps      []ActivitySteps `json:"activities-steps"`
 	ActivitiesStepsIntra IntradayDataset `json:"activities-steps-intraday"`
 }
+type WeightLog struct {
+	BMI    float64 `json:"bmi"`
+	Date   string  `json:"date"`
+	Fat    float64 `json:"fat"`
+	LogID  int64   `json:"logId"`
+	Source string  `json:"source"`
+	Time   string  `json:"time"`
+	Weight float64 `json:"weight"`
+}
+
+type WeightData struct {
+	Weight []WeightLog `json:"weight"`
+}
 
 func LoadToken() (*oauth2.Token, error) {
 	file, err := os.Open("token.json")
@@ -264,6 +277,29 @@ func GetStepsDay(fitbitClient *http.Client) *StepsData {
 		log.Fatal(err)
 	}
 	return &stepsData
+}
+
+func GetWeightWeek(fitbitClient *http.Client) *WeightData {
+	date := time.Now().Format("2006-01-02")
+	url := fmt.Sprintf("%s/1/user/-/body/log/weight/date/%s/30d.json", fitbitUrl, date)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Add("accept-language", "en_US")
+
+	resp, err := fitbitClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer resp.Body.Close()
+	weightData := WeightData{}
+	err = json.NewDecoder(resp.Body).Decode(&weightData)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return &weightData
 }
 
 func AddWater(fitbitClient *http.Client, ounces int) {

@@ -69,7 +69,20 @@ func main() {
 			asciigraph.Height(10),
 			asciigraph.Width(100))
 		fmt.Println(graph)
-		fmt.Println(len(heartData), len(stepsData))
+		fmt.Println()
+
+		weightWeek := fitbit.GetWeightWeek(client)
+		weightData := make([]float64, 0)
+
+		for _, w := range weightWeek.Weight {
+			weightData = append(weightData, w.Weight)
+		}
+
+		graph = asciigraph.Plot(
+			weightData,
+			asciigraph.Height(10),
+		)
+		fmt.Println(graph)
 	}
 
 }
