@@ -262,6 +262,7 @@ func GetHeartDay(fitbitClient *http.Client) *HeartRateData {
 
 	return &heartrateData
 }
+
 func GetStepsDay(fitbitClient *http.Client) *StepsData {
 	resp, err := fitbitClient.Get(
 		fmt.Sprintf("%s/1/user/-/activities/steps/date/today/1d/1min.json",
