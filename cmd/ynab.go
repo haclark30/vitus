@@ -20,7 +20,6 @@ var ynabCmd = &cobra.Command{
 }
 
 func ynabRun(cmd *cobra.Command, args []string) {
-
 	ynabClient := ynab.NewYnabClient(os.Getenv("YNAB_API_KEY"))
 	resp, _ := ynabClient.Get("https://api.ynab.com/v1/budgets")
 	defer resp.Body.Close()

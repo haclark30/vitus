@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/stackus/dotenv"
 	"golang.org/x/oauth2"
 )
 
@@ -184,7 +183,6 @@ func saveToken(token *oauth2.Token) {
 }
 func NewFitbitClient() *http.Client {
 
-	dotenv.Load()
 	conf := &oauth2.Config{
 		ClientID:     os.Getenv("FITBIT_CLIENT_ID"),
 		ClientSecret: os.Getenv("FITBIT_API_KEY"),
@@ -280,9 +278,9 @@ func GetStepsDay(fitbitClient *http.Client) *StepsData {
 	return &stepsData
 }
 
-func GetWeightWeek(fitbitClient *http.Client) *WeightData {
-	date := time.Now().Format("2006-01-02")
-	url := fmt.Sprintf("%s/1/user/-/body/log/weight/date/%s/30d.json", fitbitUrl, date)
+func GetWeight(fitbitClient *http.Client, date time.Time, period string) *WeightData {
+	dateStr := date.Format("2006-01-02")
+	url := fmt.Sprintf("%s/1/user/-/body/log/weight/date/%s/%s.json", fitbitUrl, dateStr, period)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		log.Fatal(err)

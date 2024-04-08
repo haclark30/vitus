@@ -4,6 +4,7 @@ go 1.22.1
 
 require (
 	github.com/guptarohit/asciigraph v0.7.1
+	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/spf13/cobra v1.8.0
 	github.com/stackus/dotenv v0.0.0-20221206033122-02295762494b
 	golang.org/x/oauth2 v0.18.0
