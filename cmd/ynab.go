@@ -9,10 +9,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	rootCmd.AddCommand(ynabCmd)
-}
-
 var ynabCmd = &cobra.Command{
 	Use:   "ynab",
 	Short: "You Need a Budget stats",
