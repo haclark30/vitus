@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"database/sql"
 	"fmt"
 	"io"
 	"log"
@@ -13,6 +12,7 @@ import (
 	"github.com/haclark30/vitus/db"
 	"github.com/haclark30/vitus/fitbit"
 	"github.com/spf13/cobra"
+	"github.com/stackus/dotenv"
 )
 
 const fitbitUrl = "https://api.fitbit.com/"
@@ -42,34 +42,66 @@ var fitbitWaterCmd = &cobra.Command{
 	Run:   fitbitWater,
 }
 
+var client *http.Client
+
+var loadVal int
+
 func init() {
+	dotenv.Load()
+	client = fitbit.NewFitbitClient()
+	fitbitLoadCmd.Flags().IntVar(&loadVal, "days", 30, "days")
 	fitbitCmd.AddCommand(fitbitLoadCmd)
 	fitbitCmd.AddCommand(fitbitApiCmd)
 	fitbitCmd.AddCommand(fitbitWaterCmd)
 }
 
 func fitbitRun(cmd *cobra.Command, args []string) {
-	client := fitbit.NewFitbitClient()
-	heartRate := fitbit.GetHeartDay(client)
-	stepsDay := fitbit.GetStepsDay(client)
-	heartData := make([]float64, 0)
-	stepsData := make([]float64, 0)
-	heartIndex := 0
-	for _, step := range stepsDay.ActivitiesStepsIntra.Dataset {
-		var heart fitbit.IntradayData
-		if heartIndex < len(heartRate.ActivitiesHeartIntraday.Dataset) {
-			heart = heartRate.ActivitiesHeartIntraday.Dataset[heartIndex]
-		}
-		if step.Time == heart.Time {
-			heartData = append(heartData, float64(heart.Value))
-			heartIndex++
-		} else {
-			heartData = append(heartData, 0)
-		}
-		stepsData = append(stepsData, float64(step.Value))
+	db := db.GetDb()
+	var stepsData []float64
+	stmt, err := db.Prepare(`SELECT steps FROM StepsRecords WHERE date(time, 'unixepoch', 'localtime') == ?`)
+	if err != nil {
+		log.Fatal(err)
 	}
+	defer stmt.Close()
+	rows, err := stmt.Query(time.Now().Format("2006-01-02"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var steps float64
+		err = rows.Scan(&steps)
+		if err != nil {
+			log.Fatal(err)
+		}
+		stepsData = append(stepsData, steps)
+	}
+
+	var heartData []float64
+	stmt, err = db.Prepare(`SELECT heartRate FROM HeartRateRecords WHERE date(time, 'unixepoch', 'localtime') == ?`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer stmt.Close()
+	rows, err = stmt.Query(time.Now().Format("2006-01-02"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var heart float64
+		err = rows.Scan(&heart)
+		if err != nil {
+			log.Fatal(err)
+		}
+		heartData = append(heartData, heart)
+	}
+
 	graph := asciigraph.Plot(
 		heartData,
+		asciigraph.Caption("heart rate"),
 		asciigraph.Height(10),
 		asciigraph.Width(100))
 	fmt.Println(graph)
@@ -77,14 +109,14 @@ func fitbitRun(cmd *cobra.Command, args []string) {
 
 	graph = asciigraph.Plot(
 		stepsData,
+		asciigraph.Caption("steps"),
 		asciigraph.Height(10),
 		asciigraph.Width(100))
 	fmt.Println(graph)
 	fmt.Println()
 
 	var weightData []float64
-	db := db.GetDb()
-	rows, err := db.Query("SELECT weight FROM WeightRecords WHERE date >= date('2024-01-01') ORDER BY date")
+	rows, err = db.Query("SELECT weight FROM WeightRecords WHERE date >= date('2024-01-01') ORDER BY date")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -100,28 +132,27 @@ func fitbitRun(cmd *cobra.Command, args []string) {
 
 	graph = asciigraph.Plot(
 		weightData,
+		asciigraph.Caption("weight"),
 		asciigraph.Height(10),
 	)
 	fmt.Println(graph)
-	sleepData := fitbit.GetSleepToday(client)
-	sleepHours := sleepData.Summary.TotalMinutesAsleep / 60
-	sleepMinutes := sleepData.Summary.TotalMinutesAsleep % 60
-
-	fmt.Printf("slept for %d hours %d minutes\n", sleepHours, sleepMinutes)
-
-	activityToday := fitbit.GetActivitiesToday(client)
-	fmt.Printf("steps today: %d\n", activityToday.Summary.Steps)
-	fmt.Printf("active minutes today: %d\n", activityToday.Summary.VeryActiveMinutes)
+	// sleepData := fitbit.GetSleepToday(client)
+	// sleepHours := sleepData.Summary.TotalMinutesAsleep / 60
+	// sleepMinutes := sleepData.Summary.TotalMinutesAsleep % 60
+	//
+	// fmt.Printf("slept for %d hours %d minutes\n", sleepHours, sleepMinutes)
+	//
+	// activityToday := fitbit.GetActivitiesToday(client)
+	// fmt.Printf("steps today: %d\n", activityToday.Summary.Steps)
+	// fmt.Printf("active minutes today: %d\n", activityToday.Summary.VeryActiveMinutes)
 }
 
 func fitbitLoad(cmd *cobra.Command, args []string) {
-	client := fitbit.NewFitbitClient()
 	db := db.GetDb()
-	loadFitbitDb(client, db)
+	loadFitbitDb(client, db, time.Now())
 }
 
 func fitbitApi(cmd *cobra.Command, args []string) {
-	client := fitbit.NewFitbitClient()
 	resp, err := client.Get(fmt.Sprintf("%s/%s", fitbitUrl, args[0]))
 	if err != nil {
 		log.Fatal(err)
@@ -137,31 +168,9 @@ func fitbitApi(cmd *cobra.Command, args []string) {
 }
 
 func fitbitWater(cmd *cobra.Command, args []string) {
-	client := fitbit.NewFitbitClient()
 	oz, err := strconv.Atoi(args[0])
 	if err != nil {
 		log.Fatal(err)
 	}
 	fitbit.AddWater(client, oz)
-}
-
-func loadFitbitDb(client *http.Client, db *sql.DB) error {
-	currTime := time.Now()
-	for currTime.Year() >= 2023 {
-		weightData := fitbit.GetWeight(client, currTime, "30d")
-		for _, w := range weightData.Weight {
-			stmt, err := db.Prepare("INSERT INTO WeightRecords (date, weight) VALUES (?, ?)")
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer stmt.Close()
-
-			_, err = stmt.Exec(w.Date, w.Weight)
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
-		currTime = currTime.Add(-30 * 24 * time.Hour)
-	}
-	return nil
 }

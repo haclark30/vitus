@@ -18,6 +18,8 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(fitbitCmd)
 	rootCmd.AddCommand(ynabCmd)
+	rootCmd.AddCommand(createDbCmd)
+	rootCmd.AddCommand(teaCmd)
 }
 
 func Execute() {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -160,6 +161,7 @@ func LoadToken() (*oauth2.Token, error) {
 		Expiry:       tokenExpiry,
 	}, nil
 }
+
 func saveToken(token *oauth2.Token) {
 	file, err := os.Create("token.json")
 	if err != nil {
@@ -182,7 +184,6 @@ func saveToken(token *oauth2.Token) {
 	}
 }
 func NewFitbitClient() *http.Client {
-
 	conf := &oauth2.Config{
 		ClientID:     os.Getenv("FITBIT_CLIENT_ID"),
 		ClientSecret: os.Getenv("FITBIT_API_KEY"),
@@ -241,16 +242,19 @@ func GetActivitiesToday(fitbitClient *http.Client) *FitnessData {
 	return &act
 }
 
-func GetHeartDay(fitbitClient *http.Client) *HeartRateData {
-
+func GetHeartDay(fitbitClient *http.Client, date time.Time) *HeartRateData {
 	resp, err := fitbitClient.Get(
-		fmt.Sprintf("%s/1/user/-/activities/heart/date/today/1d/1min.json",
-			fitbitUrl))
+		fmt.Sprintf("%s/1/user/-/activities/heart/date/%s/1d/1min.json",
+			fitbitUrl, date.Format("2006-01-02")))
+	slog.Debug("get heart", "status", resp.StatusCode)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatal("received error from fitbit getting heart")
+	}
 
 	heartrateData := HeartRateData{}
 	err = json.NewDecoder(resp.Body).Decode(&heartrateData)
@@ -261,14 +265,18 @@ func GetHeartDay(fitbitClient *http.Client) *HeartRateData {
 	return &heartrateData
 }
 
-func GetStepsDay(fitbitClient *http.Client) *StepsData {
+func GetStepsDay(fitbitClient *http.Client, date time.Time) *StepsData {
 	resp, err := fitbitClient.Get(
-		fmt.Sprintf("%s/1/user/-/activities/steps/date/today/1d/1min.json",
-			fitbitUrl))
+		fmt.Sprintf("%s/1/user/-/activities/steps/date/%s/1d/1min.json",
+			fitbitUrl, date.Format("2006-01-02")))
+	slog.Debug("get steps", "status", resp.StatusCode)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatal("received error from fitbit getting steps")
+	}
 
 	stepsData := StepsData{}
 	err = json.NewDecoder(resp.Body).Decode(&stepsData)
@@ -293,6 +301,9 @@ func GetWeight(fitbitClient *http.Client, date time.Time, period string) *Weight
 	}
 
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatal("received error from fitbit getting weight")
+	}
 	weightData := WeightData{}
 	err = json.NewDecoder(resp.Body).Decode(&weightData)
 	if err != nil {
