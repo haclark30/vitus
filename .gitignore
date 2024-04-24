@@ -22,3 +22,5 @@ go.work
 .env
 token.json
 vitus
+*.log
+*.db
