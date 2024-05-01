@@ -3,7 +3,6 @@ package cmd
 import (
 	"database/sql"
 	"log"
-	"log/slog"
 	"time"
 
 	tslc "github.com/NimbleMarkets/ntcharts/linechart/timeserieslinechart"
@@ -17,13 +16,18 @@ type WeightChart struct {
 }
 
 func (w WeightChart) View() string {
-	weightChartView := lipgloss.NewStyle().
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("63")).
-		Render("weight\n\n" + w.Model.View())
-	return weightChartView
+	return lipgloss.JoinHorizontal(lipgloss.Center,
+		lipgloss.NewStyle().Align(lipgloss.Center).Render("weight per day\n"+w.Model.View()),
+	)
 }
 
+func NewWeightChart(db *sql.DB, width, height int, zoneManager *zone.Manager) WeightChart {
+	weightChart := tslc.New(width, height, tslc.WithZoneManager(zoneManager))
+
+	now := time.Now()
+	weightChart = LoadWeightChart(db, weightChart, time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location()))
+	return WeightChart{weightChart, zoneManager}
+}
 func LoadWeightChart(db *sql.DB, chart tslc.Model, startDate time.Time) tslc.Model {
 	stmt, err := db.Prepare(
 		`SELECT date(date), weight FROM WeightRecords where date >= ?`,
@@ -59,7 +63,6 @@ func LoadWeightChart(db *sql.DB, chart tslc.Model, startDate time.Time) tslc.Mod
 			log.Fatal("error parsing date from db", err)
 		}
 		chart.Push(tslc.TimePoint{Time: wt, Value: weightRecords[i]})
-		slog.Debug("pushed weight", "weight", weightRecords[i])
 		if weightRecords[i] < minWeight {
 			minWeight = weightRecords[i]
 		}
