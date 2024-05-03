@@ -14,6 +14,14 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+type activeState int
+
+const (
+	stepsActive activeState = iota
+	weightActive
+	numStates // used to keep track of number of states
+)
+
 var teaCmd = &cobra.Command{
 	Use: "tea",
 	Run: runTea,
@@ -29,6 +37,15 @@ type model struct {
 	stepsChart  StepsChart
 	weightChart WeightChart
 	zoneManager *zone.Manager
+	activeState activeState
+}
+
+func (m model) incrementState() activeState {
+	return (m.activeState + 1) % numStates
+}
+
+func (m model) decrementState() activeState {
+	return (m.activeState - 1 + numStates) % numStates
 }
 
 func (m model) Init() tea.Cmd {
@@ -40,6 +57,7 @@ func (m model) Init() tea.Cmd {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	forwardmsg := false
+	activeChange := false
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -55,27 +73,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			forwardmsg = true
 		case "left", "h":
 			forwardmsg = true
+		case "tab":
+			m.activeState = m.incrementState()
+			activeChange = true
+		case "shift+tab":
+			m.activeState = m.decrementState()
+			activeChange = true
 		}
-	case tea.MouseMsg:
-		if msg.Action == tea.MouseActionPress {
-			m.weightChart.Blur()
-			m.stepsChart.Canvas.Blur()
-
-			switch {
-			case m.zoneManager.Get(m.weightChart.ZoneID()).InBounds(msg):
-				m.weightChart.Focus()
-			case m.zoneManager.Get(m.stepsChart.ZoneID()).InBounds(msg):
-				m.stepsChart.Canvas.Focus()
-			}
+	}
+	if activeChange {
+		m.weightChart.Blur()
+		m.stepsChart.Canvas.Blur()
+		switch m.activeState {
+		case stepsActive:
+			m.stepsChart.Canvas.Focus()
+		case weightActive:
+			m.weightChart.Focus()
 		}
-		forwardmsg = true
 	}
 	if forwardmsg {
-		switch {
-		case m.weightChart.Focused():
+		switch m.activeState {
+		case weightActive:
 			m.weightChart.Model, _ = m.weightChart.Model.Update(msg)
 			m.weightChart.DrawBrailleAll()
-		case m.stepsChart.Canvas.Focused():
+		case stepsActive:
 			m.stepsChart, _ = m.stepsChart.Update(msg)
 			m.stepsChart.Draw()
 		}
@@ -84,12 +105,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	// call bubblezone Manager.Scan() at root model
 	width, _, _ := term.GetSize(int(os.Stdout.Fd()))
-	chartView := lipgloss.JoinVertical(lipgloss.Center,
-		defaultStyle.Render(m.stepsChart.View()),
-		defaultStyle.Render(m.weightChart.View()),
-	)
+	var chartView string
+
+	switch m.activeState {
+	case stepsActive:
+		chartView = defaultStyle.Render(m.stepsChart.View())
+	case weightActive:
+		chartView = defaultStyle.Render(m.weightChart.View())
+	}
 
 	chartView = lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Render(chartView)
 
@@ -107,7 +131,7 @@ func runTea(cmd *cobra.Command, args []string) {
 	stepsChart := NewStepsChart(db, width-20, height, zoneManager)
 
 	stepsChart.Canvas.Focus()
-	m := model{db, stepsChart, weightChart, zoneManager}
+	m := model{db, stepsChart, weightChart, zoneManager, stepsActive}
 	if _, err := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run(); err != nil {
 		log.Fatal(err)
 	}
