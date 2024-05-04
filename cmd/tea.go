@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/haclark30/vitus/db"
 	"github.com/spf13/cobra"
@@ -36,6 +37,19 @@ type model struct {
 	stepsChart  StepsChart
 	weightChart WeightChart
 	activeState activeState
+}
+
+func (a activeState) String() string {
+	switch a {
+	case stepsActive:
+		return "Steps"
+	case weightActive:
+		return "Weight"
+	case numStates:
+		return "None"
+	default:
+		return "Unknown State"
+	}
 }
 
 func (m model) incrementState() activeState {
@@ -102,22 +116,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) View() string {
-	width, _, _ := term.GetSize(int(os.Stdout.Fd()))
-	var chartView string
-
-	switch m.activeState {
-	case stepsActive:
-		chartView = defaultStyle.Render(m.stepsChart.View())
-	case weightActive:
-		chartView = defaultStyle.Render(m.weightChart.View())
-	}
-
-	chartView = lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Render(chartView)
-
-	return chartView
-}
-
 func tabBorderWithBottom(left, middle, right string) lipgloss.Border {
 	border := lipgloss.RoundedBorder()
 	border.BottomLeft = left
@@ -135,6 +133,53 @@ var (
 	activeTabStyle    = inactiveTabStyle.Copy().Border(activeTabBorder, true)
 	windowStyle       = lipgloss.NewStyle().BorderForeground(highlightColor).Padding(2, 0).Align(lipgloss.Center).Border(lipgloss.NormalBorder()).UnsetBorderTop()
 )
+
+func (m model) View() string {
+	// width, _, _ := term.GetSize(int(os.Stdout.Fd()))
+	doc := strings.Builder{}
+
+	// var chartView string
+	var renderedTabs []string
+
+	for state := stepsActive; state < numStates; state++ {
+		var style lipgloss.Style
+		isFirst, isLast, isActive := state == 0, state == numStates-1, state == m.activeState
+
+		if isActive {
+			style = activeTabStyle.Copy()
+		} else {
+			style = inactiveTabStyle.Copy()
+		}
+
+		border, _, _, _, _ := style.GetBorder()
+		if isFirst && isActive {
+			border.BottomLeft = "│"
+		} else if isFirst && !isActive {
+			border.BottomLeft = "├"
+		} else if isLast && isActive {
+			border.BottomRight = "│"
+		} else if isLast && !isActive {
+			border.BottomRight = "┤"
+		}
+		style = style.Border(border)
+		renderedTabs = append(renderedTabs, style.Render(state.String()))
+	}
+
+	row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
+	doc.WriteString(row)
+	doc.WriteString("\n")
+	// which tab is active
+	switch m.activeState {
+	case stepsActive:
+		doc.WriteString(defaultStyle.Render(m.stepsChart.View()))
+	case weightActive:
+		doc.WriteString(defaultStyle.Render(m.weightChart.View()))
+	}
+
+	// chartView = lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Render(chartView)
+
+	return docStyle.Render(doc.String())
+}
 
 func runTea(cmd *cobra.Command, args []string) {
 	width, _, _ := term.GetSize(int(os.Stdout.Fd()))
