@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/haclark30/vitus/db"
-	zone "github.com/lrstanley/bubblezone"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
@@ -36,7 +35,6 @@ type model struct {
 	db          *sql.DB
 	stepsChart  StepsChart
 	weightChart WeightChart
-	zoneManager *zone.Manager
 	activeState activeState
 }
 
@@ -117,21 +115,38 @@ func (m model) View() string {
 
 	chartView = lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Render(chartView)
 
-	return m.zoneManager.Scan(chartView)
+	return chartView
 }
+
+func tabBorderWithBottom(left, middle, right string) lipgloss.Border {
+	border := lipgloss.RoundedBorder()
+	border.BottomLeft = left
+	border.Bottom = middle
+	border.BottomRight = right
+	return border
+}
+
+var (
+	inactiveTabBorder = tabBorderWithBottom("┴", "─", "┴")
+	activeTabBorder   = tabBorderWithBottom("┘", " ", "└")
+	docStyle          = lipgloss.NewStyle().Padding(1, 2, 1, 2)
+	highlightColor    = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
+	inactiveTabStyle  = lipgloss.NewStyle().Border(inactiveTabBorder, true).BorderForeground(highlightColor).Padding(0, 1)
+	activeTabStyle    = inactiveTabStyle.Copy().Border(activeTabBorder, true)
+	windowStyle       = lipgloss.NewStyle().BorderForeground(highlightColor).Padding(2, 0).Align(lipgloss.Center).Border(lipgloss.NormalBorder()).UnsetBorderTop()
+)
 
 func runTea(cmd *cobra.Command, args []string) {
 	width, _, _ := term.GetSize(int(os.Stdout.Fd()))
 	height := 16
 
 	db := db.GetDb()
-	zoneManager := zone.New()
 
-	weightChart := NewWeightChart(db, width-10, height, zoneManager)
-	stepsChart := NewStepsChart(db, width-20, height, zoneManager)
+	weightChart := NewWeightChart(db, width-10, height)
+	stepsChart := NewStepsChart(db, width-20, height)
 
 	stepsChart.Canvas.Focus()
-	m := model{db, stepsChart, weightChart, zoneManager, stepsActive}
+	m := model{db, stepsChart, weightChart, stepsActive}
 	if _, err := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run(); err != nil {
 		log.Fatal(err)
 	}

@@ -7,12 +7,10 @@ import (
 
 	tslc "github.com/NimbleMarkets/ntcharts/linechart/timeserieslinechart"
 	"github.com/charmbracelet/lipgloss"
-	zone "github.com/lrstanley/bubblezone"
 )
 
 type WeightChart struct {
 	tslc.Model
-	zoneManager *zone.Manager
 }
 
 func (w WeightChart) View() string {
@@ -21,12 +19,12 @@ func (w WeightChart) View() string {
 	)
 }
 
-func NewWeightChart(db *sql.DB, width, height int, zoneManager *zone.Manager) WeightChart {
-	weightChart := tslc.New(width, height, tslc.WithZoneManager(zoneManager))
+func NewWeightChart(db *sql.DB, width, height int) WeightChart {
+	weightChart := tslc.New(width, height)
 
 	now := time.Now()
 	weightChart = LoadWeightChart(db, weightChart, time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location()))
-	return WeightChart{weightChart, zoneManager}
+	return WeightChart{weightChart}
 }
 func LoadWeightChart(db *sql.DB, chart tslc.Model, startDate time.Time) tslc.Model {
 	stmt, err := db.Prepare(

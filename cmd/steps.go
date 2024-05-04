@@ -9,7 +9,6 @@ import (
 	"github.com/NimbleMarkets/ntcharts/barchart"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	zone "github.com/lrstanley/bubblezone"
 )
 
 type StepsChart struct {
@@ -19,7 +18,6 @@ type StepsChart struct {
 	activeIdx    int
 	startDayDiff int
 	endDayDiff   int
-	zoneManager  *zone.Manager
 }
 
 func (s StepsChart) Update(msg tea.Msg) (StepsChart, tea.Cmd) {
@@ -84,7 +82,7 @@ func (s StepsChart) View() string {
 	)
 }
 
-func NewStepsChart(db *sql.DB, width, height int, zoneManager *zone.Manager) StepsChart {
+func NewStepsChart(db *sql.DB, width, height int) StepsChart {
 	stepsData := GetStepsData(db, 0, 1)
 	barChart := barchart.New(width, height, barchart.WithDataSet(stepsData))
 
@@ -97,7 +95,6 @@ func NewStepsChart(db *sql.DB, width, height int, zoneManager *zone.Manager) Ste
 		}
 	}
 
-	barChart.SetZoneManager(zoneManager)
 	return StepsChart{
 		Model:        barChart,
 		db:           db,
@@ -105,7 +102,6 @@ func NewStepsChart(db *sql.DB, width, height int, zoneManager *zone.Manager) Ste
 		activeIdx:    activeIdx,
 		startDayDiff: 0,
 		endDayDiff:   1,
-		zoneManager:  zoneManager,
 	}
 }
 func GetStepsData(db *sql.DB, startDayDiff, endDayDiff int) []barchart.BarData {
