@@ -84,7 +84,7 @@ func (s StepsChart) View() string {
 
 func NewStepsChart(db *sql.DB, width, height int) StepsChart {
 	stepsData := GetStepsData(db, 0, 1)
-	barChart := barchart.New(width, height, barchart.WithDataSet(stepsData))
+	barChart := barchart.New(width, height-1, barchart.WithDataSet(stepsData))
 
 	var activeIdx int
 	for idx, stepCol := range stepsData {

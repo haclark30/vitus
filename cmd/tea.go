@@ -135,39 +135,14 @@ var (
 )
 
 func (m model) View() string {
-	// width, _, _ := term.GetSize(int(os.Stdout.Fd()))
+	// TODO: make header
+	width, _, _ := term.GetSize(int(os.Stdout.Fd()))
 	doc := strings.Builder{}
 
 	// var chartView string
 	var renderedTabs []string
 
-	for state := stepsActive; state < numStates; state++ {
-		var style lipgloss.Style
-		isFirst, isLast, isActive := state == 0, state == numStates-1, state == m.activeState
-
-		if isActive {
-			style = activeTabStyle.Copy()
-		} else {
-			style = inactiveTabStyle.Copy()
-		}
-
-		border, _, _, _, _ := style.GetBorder()
-		if isFirst && isActive {
-			border.BottomLeft = "│"
-		} else if isFirst && !isActive {
-			border.BottomLeft = "├"
-		} else if isLast && isActive {
-			border.BottomRight = "│"
-		} else if isLast && !isActive {
-			border.BottomRight = "┤"
-		}
-		style = style.Border(border)
-		renderedTabs = append(renderedTabs, style.Render(state.String()))
-	}
-
-	row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
-	doc.WriteString(row)
-	doc.WriteString("\n")
+	// TODO: build border for any content
 	// which tab is active
 	switch m.activeState {
 	case stepsActive:
@@ -176,23 +151,37 @@ func (m model) View() string {
 		doc.WriteString(defaultStyle.Render(m.weightChart.View()))
 	}
 
+	// build the tabs
+	for state := stepsActive; state < numStates; state++ {
+		var style lipgloss.Style
+		style = style.BorderStyle(lipgloss.HiddenBorder())
+		if state == m.activeState {
+			style = style.BorderStyle(lipgloss.Border{Bottom: "_"}).BorderForeground(lipgloss.Color("63"))
+		}
+		renderedTabs = append(renderedTabs, style.Render(state.String()))
+	}
+
+	row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
+	doc.WriteString("\n")
+	doc.WriteString(row)
+	doc.WriteString("\n")
+
 	// chartView = lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Render(chartView)
 
-	return docStyle.Render(doc.String())
+	return docStyle.Width(width).Align(lipgloss.Center).Render(doc.String())
 }
 
 func runTea(cmd *cobra.Command, args []string) {
-	width, _, _ := term.GetSize(int(os.Stdout.Fd()))
-	height := 16
+	width, height, _ := term.GetSize(int(os.Stdout.Fd()))
 
 	db := db.GetDb()
 
-	weightChart := NewWeightChart(db, width-10, height)
-	stepsChart := NewStepsChart(db, width-20, height)
+	weightChart := NewWeightChart(db, width-10, height-10)
+	stepsChart := NewStepsChart(db, width-20, height-10)
 
 	stepsChart.Canvas.Focus()
 	m := model{db, stepsChart, weightChart, stepsActive}
-	if _, err := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run(); err != nil {
+	if _, err := tea.NewProgram(m, tea.WithAltScreen()).Run(); err != nil {
 		log.Fatal(err)
 	}
 }
