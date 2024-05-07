@@ -19,6 +19,8 @@ type activeState int
 const (
 	stepsActive activeState = iota
 	weightActive
+	heartActive
+	sleepActive
 	numStates // used to keep track of number of states
 )
 
@@ -36,6 +38,7 @@ type model struct {
 	db          *sql.DB
 	stepsChart  StepsChart
 	weightChart WeightChart
+	heartChart  HeartChart
 	activeState activeState
 }
 
@@ -45,6 +48,10 @@ func (a activeState) String() string {
 		return "Steps"
 	case weightActive:
 		return "Weight"
+	case heartActive:
+		return "Heart"
+	case sleepActive:
+		return "Sleep"
 	case numStates:
 		return "None"
 	default:
@@ -64,6 +71,8 @@ func (m model) Init() tea.Cmd {
 	m.stepsChart.Draw()
 	m.weightChart.DrawXYAxisAndLabel()
 	m.weightChart.DrawBrailleAll()
+	m.heartChart.DrawXYAxisAndLabel()
+	m.heartChart.DrawBrailleAll()
 	return nil
 }
 
@@ -139,16 +148,18 @@ func (m model) View() string {
 	width, _, _ := term.GetSize(int(os.Stdout.Fd()))
 	doc := strings.Builder{}
 
-	// var chartView string
 	var renderedTabs []string
 
 	// TODO: build border for any content
+
 	// which tab is active
 	switch m.activeState {
 	case stepsActive:
 		doc.WriteString(defaultStyle.Render(m.stepsChart.View()))
 	case weightActive:
 		doc.WriteString(defaultStyle.Render(m.weightChart.View()))
+	case heartActive:
+		doc.WriteString(defaultStyle.Render(m.heartChart.View()))
 	}
 
 	// build the tabs
@@ -166,8 +177,6 @@ func (m model) View() string {
 	doc.WriteString(row)
 	doc.WriteString("\n")
 
-	// chartView = lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Render(chartView)
-
 	return docStyle.Width(width).Align(lipgloss.Center).Render(doc.String())
 }
 
@@ -178,9 +187,10 @@ func runTea(cmd *cobra.Command, args []string) {
 
 	weightChart := NewWeightChart(db, width-10, height-10)
 	stepsChart := NewStepsChart(db, width-20, height-10)
+	heartChart := NewHeartChart(db, width-10, height-10)
 
 	stepsChart.Canvas.Focus()
-	m := model{db, stepsChart, weightChart, stepsActive}
+	m := model{db, stepsChart, weightChart, heartChart, stepsActive}
 	if _, err := tea.NewProgram(m, tea.WithAltScreen()).Run(); err != nil {
 		log.Fatal(err)
 	}

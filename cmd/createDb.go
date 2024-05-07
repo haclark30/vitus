@@ -48,12 +48,12 @@ func loadWeight(db *sql.DB, client *http.Client, startTime, endTime time.Time) {
 		log.Fatal(err)
 	}
 	defer stmt.Close()
+
 	for endTime.Compare(startTime) >= 0 {
 		slog.Debug("insert weight", "time", endTime)
 		weightData := fitbit.GetWeight(client, endTime, "30d")
 		for _, w := range weightData.Weight {
 			slog.Debug("insert weight", "time", endTime)
-
 			_, err = stmt.Exec(w.Date, w.Weight)
 			if err != nil {
 				log.Fatal(err)
@@ -61,6 +61,7 @@ func loadWeight(db *sql.DB, client *http.Client, startTime, endTime time.Time) {
 		}
 		endTime = endTime.Add(-30 * 24 * time.Hour)
 	}
+
 	if err := txn.Commit(); err != nil {
 		log.Fatal(err)
 	}
