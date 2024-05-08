@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/NimbleMarkets/ntcharts/canvas"
 	"github.com/haclark30/vitus/db"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -73,6 +74,9 @@ func (m model) Init() tea.Cmd {
 	m.weightChart.DrawBrailleAll()
 	m.heartChart.DrawXYAxisAndLabel()
 	m.heartChart.DrawBrailleAll()
+	m.heartChart.DrawRuneLine(canvas.Float64Point{m.heartChart.MinX(), 114}, canvas.Float64Point{m.heartChart.MaxX(), 114}, '_')
+	m.heartChart.DrawRuneLine(canvas.Float64Point{m.heartChart.MinX(), 139}, canvas.Float64Point{m.heartChart.MaxX(), 139}, '_')
+	m.heartChart.DrawRuneLine(canvas.Float64Point{m.heartChart.MinX(), 170}, canvas.Float64Point{m.heartChart.MaxX(), 170}, '_')
 	return nil
 }
 

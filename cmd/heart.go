@@ -3,8 +3,10 @@ package cmd
 import (
 	"database/sql"
 	"log"
+	"log/slog"
 	"time"
 
+	"github.com/NimbleMarkets/ntcharts/linechart"
 	tslc "github.com/NimbleMarkets/ntcharts/linechart/timeserieslinechart"
 )
 
@@ -45,15 +47,23 @@ func GetHeartData(db *sql.DB, startDayDiff, endDayDiff int) []tslc.TimePoint {
 	return timePts
 }
 
+func LocalHourLabelFormatter() linechart.LabelFormatter {
+	return func(i int, v float64) string {
+		t := time.Unix(int64(v), 0).Local()
+		return t.Format("15:04")
+	}
+}
+
 func NewHeartChart(db *sql.DB, width, height int) HeartChart {
 	dataSet := GetHeartData(db, 0, 1)
 	chart := tslc.New(
 		width,
 		height,
 		tslc.WithDataSetTimeSeries("heart data", dataSet),
-		tslc.WithXLabelFormatter(tslc.HourTimeLabelFormatter()),
+		tslc.WithXLabelFormatter(LocalHourLabelFormatter()),
 		tslc.WithYRange(50, 175),
 	)
+
 	return HeartChart{
 		Model: chart,
 		db:    db,
