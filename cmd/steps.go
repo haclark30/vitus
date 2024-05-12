@@ -148,6 +148,7 @@ func GetStepsData(db *sql.DB, startDayDiff, endDayDiff int) []barchart.BarData {
 			})
 		} else {
 			// fill remaining hours with 0
+			// TODO: fix accessing steptimes when len == 0
 			stepTime, _ := time.Parse("2006-01-02 15:00:00", stepTimes[len(stepTimes)-1])
 			stepTime = stepTime.Add(time.Hour * time.Duration(i-len(stepTimes)+1))
 			stepsData = append(stepsData, barchart.BarData{

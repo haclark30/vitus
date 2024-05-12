@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/NimbleMarkets/ntcharts/canvas"
 	"github.com/haclark30/vitus/db"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -72,11 +71,7 @@ func (m model) Init() tea.Cmd {
 	m.stepsChart.Draw()
 	m.weightChart.DrawXYAxisAndLabel()
 	m.weightChart.DrawBrailleAll()
-	m.heartChart.DrawXYAxisAndLabel()
-	m.heartChart.DrawBrailleAll()
-	m.heartChart.DrawRuneLine(canvas.Float64Point{m.heartChart.MinX(), 114}, canvas.Float64Point{m.heartChart.MaxX(), 114}, '_')
-	m.heartChart.DrawRuneLine(canvas.Float64Point{m.heartChart.MinX(), 139}, canvas.Float64Point{m.heartChart.MaxX(), 139}, '_')
-	m.heartChart.DrawRuneLine(canvas.Float64Point{m.heartChart.MinX(), 170}, canvas.Float64Point{m.heartChart.MaxX(), 170}, '_')
+	m.heartChart.Draw()
 	return nil
 }
 
@@ -109,11 +104,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if activeChange {
 		m.weightChart.Blur()
 		m.stepsChart.Canvas.Blur()
+		m.heartChart.Blur()
 		switch m.activeState {
 		case stepsActive:
 			m.stepsChart.Canvas.Focus()
 		case weightActive:
 			m.weightChart.Focus()
+		case heartActive:
+			m.heartChart.Focus()
 		}
 	}
 	if forwardmsg {
@@ -124,6 +122,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case stepsActive:
 			m.stepsChart, _ = m.stepsChart.Update(msg)
 			m.stepsChart.Draw()
+		case heartActive:
+			m.heartChart, _ = m.heartChart.Update(msg)
+			m.heartChart.Draw()
 		}
 	}
 	return m, nil
@@ -191,7 +192,7 @@ func runTea(cmd *cobra.Command, args []string) {
 
 	weightChart := NewWeightChart(db, width-10, height-10)
 	stepsChart := NewStepsChart(db, width-20, height-10)
-	heartChart := NewHeartChart(db, width-10, height-10)
+	heartChart := NewHeartChart(db, width-10, height-10, 0, 1)
 
 	stepsChart.Canvas.Focus()
 	m := model{db, stepsChart, weightChart, heartChart, stepsActive}
